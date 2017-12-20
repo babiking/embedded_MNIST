@@ -152,8 +152,6 @@ class mnist_classification(object):
         lab, _, _ = utils._read_MNIST_file(lab_file, fmt='>II')
 
 
-        mnist = input_data.read_data_sets(train_dir='./MNIST_Data/', one_hot=True)
-
         # !Build-up MNIST classification model...
         assert self.sess.graph is self.graph
         self._build_model()
@@ -193,16 +191,12 @@ class mnist_classification(object):
         for ii_epoch in range(self.num_of_epoches):
             for ii_iter in range(self.max_iter):
 
-                # img_batch = utils._randomly_sample(img, self.batch_size)
-                # img_batch = np.expand_dims(train_data[0], axis=3)
-                #
-                # lab_batch = utils._randomly_sample(lab, self.batch_size)
-                # lab_batch = utils._array_sparse_to_dense(np.int64(lab_batch), num_of_classes=self.num_of_classes)
+                img_batch, indx = utils._randomly_sample(img, self.batch_size)
+                img_batch = np.expand_dims(img_batch, axis=3) / 255
 
-                train_data = mnist.train.next_batch(self.batch_size)
+                lab_batch = lab[indx]
+                lab_batch = utils._array_sparse_to_dense(np.int64(lab_batch), num_of_classes=self.num_of_classes)
 
-                img_batch = np.reshape(train_data[0], [-1, self.dim_feat, self.dim_feat, 1])
-                lab_batch = train_data[1]
 
                 _, pred, los, acc, summary= self.sess.run([self.train_op, self.predict, self.loss, self.accuracy, merged], feed_dict={self.digit: img_batch, self.label: lab_batch})
 
