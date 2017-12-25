@@ -2,21 +2,31 @@ import tensorflow as tf
 from utils import utils
 import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
+import os
+
+
+
+
+
 
 class mnist_classification(object):
 
-    def __init__(self, sess, graph, train_param={'num_of_epoches': 30,
+    def __init__(self, sess, graph, train_param={'num_of_epoches': 5,
                                         'num_of_classes': 10,
                                         'log_dir': './log',
-                                        'model_dir': './model',
+                                        'checkpoint_dir': './checkpoint',
+                                        'checkpoint_name': 'mnist_train',
                                         'batch_size': 128,
                                         'learn_rate': 1e-4,
                                         'max_iter': 5000,
                                         'dim_feat': 28}):
 
         self.num_of_epoches = train_param['num_of_epoches']
-        self.log_dir      = train_param['log_dir']
-        self.model_dir    = train_param['model_dir']
+        self.log_dir = train_param['log_dir']
+
+        self.checkpoint_dir    = train_param['checkpoint_dir']
+        self.checkpoint_name   = train_param['checkpoint_name']
+
         self.batch_size   = train_param['batch_size']
 
         self.learn_rate = train_param['learn_rate']
@@ -28,6 +38,11 @@ class mnist_classification(object):
         self.sess = sess
         self.graph = graph
 
+        # !Build-up MNIST classification model...
+        assert self.sess.graph is self.graph
+        self._build_model()
+
+        self.saver = tf.train.Saver()
 
 
 
@@ -106,8 +121,8 @@ class mnist_classification(object):
 
     def _build_model(self):
 
-        self.digit = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.dim_feat, self.dim_feat, 1])
-        self.label = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.num_of_classes])
+        self.digit = tf.placeholder(dtype=tf.float32, shape=[None, self.dim_feat, self.dim_feat, 1])
+        self.label = tf.placeholder(dtype=tf.float32, shape=[None, self.num_of_classes])
 
         # # !One-hot encoding for label...
         # with tf.name_scope('label_trans'):
@@ -150,11 +165,6 @@ class mnist_classification(object):
         # !Load data into memory...
         img, n_rows, n_cols = utils._read_MNIST_file(img_file, fmt='>IIII')
         lab, _, _ = utils._read_MNIST_file(lab_file, fmt='>II')
-
-
-        # !Build-up MNIST classification model...
-        assert self.sess.graph is self.graph
-        self._build_model()
 
 
         # !Intialize the global_variables and local_variables...
@@ -200,8 +210,55 @@ class mnist_classification(object):
 
                 _, pred, los, acc, summary= self.sess.run([self.train_op, self.predict, self.loss, self.accuracy, merged], feed_dict={self.digit: img_batch, self.label: lab_batch})
 
-                if ( (ii_epoch * self.max_iter + ii_iter) % 3000 == 0):
+                if ( (ii_epoch * self.max_iter + ii_iter) % 1000 == 0):
                     summary_writer.add_summary(summary, ii_epoch * self.max_iter + ii_iter)
+                    self._save_model(ii_epoch * self.max_iter + ii_iter)
                     print('!Loss at No.%d Epoch, No.%d Iteration=%.5f' % (ii_epoch, ii_iter, los))
                     print('!Accuracy at No.%d Epoch, No.%d Iteration=%.5f' % (ii_epoch, ii_iter, acc))
+
+
+    def _test(self, img_test, load_step=-1):
+        '''
+            Function:
+                        _test_phase
+        '''
+        if self._load_model(load_step):
+            predict_test = self.sess.run(self.predict, feed_dict={self.digit: img_test})
+            return predict_test
+        else:
+            return None
+
+
+    def _save_model(self, iter_step):
+        '''
+            Function:
+                        _save_model, i.e. save trained models during each iteration time step...
+        '''
+
+        if not os.path.exists(self.checkpoint_dir):
+            os.makedirs(self.checkpoint_dir)
+
+        self.saver.save(self.sess,
+                        os.path.join(self.checkpoint_dir, self.checkpoint_name),
+                        global_step=iter_step)
+
+
+    def _load_model(self, load_step):
+        '''
+            Function:
+                        _load_model
+        '''
+        ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            ckpt_name = (self.checkpoint_name + '-%d') % load_step
+
+            if not os.path.exists(os.path.join(self.checkpoint_dir, ckpt_name+'.meta')):
+                ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+
+            self.saver.restore(self.sess, os.path.join(self.checkpoint_dir, ckpt_name))
+
+            return True
+        else:
+            return False
+
 

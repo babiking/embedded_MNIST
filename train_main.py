@@ -1,6 +1,6 @@
 # Created by babiking on Dec.16th, 2017 @tucodec...
-from utils.utils import _array_sparse_to_dense
-from utils.utils import _read_MNIST_file
+
+from utils import utils
 from matplotlib import pyplot
 import numpy as np
 import tensorflow as tf
@@ -28,16 +28,16 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 
-# img, n_rows, n_cols = _read_MNIST_file('./data/train-images.idx3-ubyte', fmt='>IIII')
-# lab, _, _ = _read_MNIST_file('./data/train-labels.idx1-ubyte', fmt='>II')
-#
-# pyplot.figure()
-# pyplot.imshow(np.reshape(img[101,:], [n_rows, n_cols]))
-# pyplot.title(['%d' % lab[101]])
-# pyplot.show()
+# img, n_rows, n_cols = utils._read_MNIST_file('./data/train-images.idx3-ubyte', fmt='>IIII')
+# lab, _, _ = utils._read_MNIST_file('./data/train-labels.idx1-ubyte', fmt='>II')
+
+
 
 with tf.Graph().as_default() as graph:
     with tf.Session() as sess:
         MNIST_inst = mnist_classification(sess=sess, graph=graph)
 
         MNIST_inst._train(img_file='./data/train-images.idx3-ubyte', lab_file='./data/train-labels.idx1-ubyte')
+
+        # lab_test = MNIST_inst._test(img_test=test_img, load_step=30000)
+
